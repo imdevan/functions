@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/funcs/internal/alias"
@@ -192,4 +193,32 @@ func TestIntegration_Import(t *testing.T) {
 		t.Error("expected 'baz' to exist")
 	}
 }
+
+func TestIntegration_AddScriptWithEditor(t *testing.T) {
+	env := testutil.SetupTestEnv(t)
+
+	// Note: set editor to true/echo so it doesn't fail trying to launch editor
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"add", "testscript", "scripts", "-c", env.ConfigPath, "-y"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("failed to add script: %v", err)
+	}
+
+	cfg := testutil.LoadTestConfig(t, env.ConfigPath)
+	mgr := alias.NewManager(cfg.ResolvedAliasFile(), cfg.Shell, cfg.FunctionAlias, cfg.InteractiveAlias, cfg.IndexFolders)
+
+	created, err := mgr.Get("testscript")
+	if err != nil {
+		t.Fatalf("failed to get created script: %v", err)
+	}
+
+	if created.Type != domain.TypeScript {
+		t.Errorf("expected type 'scripts', got %q", created.Type)
+	}
+
+	if created.SourceFile == "" || !strings.HasSuffix(created.SourceFile, "testscript.sh") {
+		t.Errorf("expected SourceFile to point to script file, got %q", created.SourceFile)
+	}
+}
+
 

@@ -259,6 +259,8 @@ func runAliasFormWorkflow(
 		Value:       fValue,
 		Description: fDesc,
 		SourceFile:  initialAlias.SourceFile,
+		Type:        initialAlias.Type,
+		AliasName:   initialAlias.AliasName,
 	}
 
 	if err := aliasManager.Add(newAl); err != nil {

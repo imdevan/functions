@@ -14,12 +14,13 @@ import (
 )
 
 type addOptions struct {
-	configPath  string
-	fnType      string
-	value       string
-	aliasName   string
-	description string
-	yes         bool
+	configPath   string
+	fnType       string
+	value        string
+	aliasName    string
+	description  string
+	yes          bool
+	openInEditor bool
 }
 
 func newAddCmd() *cobra.Command {
@@ -39,6 +40,7 @@ func newAddCmd() *cobra.Command {
 	flags.Set(cmd, &opts.aliasName, "alias", "a", "alias name for the function")
 	flags.Set(cmd, &opts.description, "description", "d", "function description")
 	flags.Set(cmd, &opts.yes, "yes", "y", "skip editor, save directly")
+	flags.Set(cmd, &opts.openInEditor, "editor", "e", "open created function in editor")
 
 	return cmd
 }
@@ -86,8 +88,8 @@ func runAddInteractive(cmd *cobra.Command, args []string, opts *addOptions) erro
 		fnType = domain.TypeGlobal
 	}
 
-	// -y: save directly without opening editor
-	if opts.yes {
+	// Save directly if -y/--yes is passed OR if name is provided with -e/--editor flag
+	if opts.yes || (name != "" && opts.openInEditor) {
 		if name == "" {
 			return fmt.Errorf("function name is required")
 		}
@@ -110,6 +112,13 @@ func runAddInteractive(cmd *cobra.Command, args []string, opts *addOptions) erro
 			action = "updated"
 		}
 		printSuccess(cfg, action, name, value)
+
+		if opts.openInEditor {
+			created, err := aliasManager.Get(name)
+			if err == nil && created.SourceFile != "" {
+				return openEditor(cfg.Editor, created.SourceFile, 0)
+			}
+		}
 		return nil
 	}
 
@@ -143,10 +152,10 @@ func runAddInteractive(cmd *cobra.Command, args []string, opts *addOptions) erro
 		return err
 	}
 
-	// Open created/edited function file in editor unless user suppressed it
-	if name != "" {
+	// Open created/edited function file in editor if -e / --editor flag was passed
+	if opts.openInEditor && name != "" {
 		created, err := aliasManager.Get(name)
-		if err == nil && created.SourceFile != "" && created.Type != domain.TypeAlias {
+		if err == nil && created.SourceFile != "" {
 			_ = openEditor(cfg.Editor, created.SourceFile, 0)
 		}
 	}
