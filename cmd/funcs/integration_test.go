@@ -221,4 +221,23 @@ func TestIntegration_AddScriptWithEditor(t *testing.T) {
 	}
 }
 
+func TestIntegration_OpenCommand(t *testing.T) {
+	env := testutil.SetupTestEnv(t)
+
+	// Add script first
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"add", "openscript", "scripts", "-c", env.ConfigPath, "-y"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("failed to add script: %v", err)
+	}
+
+	// Test open command with non-existent name returns error
+	cmd2 := newRootCmd()
+	cmd2.SetArgs([]string{"open", "nonexistent", "-c", env.ConfigPath})
+	if err := cmd2.Execute(); err == nil {
+		t.Errorf("expected error opening nonexistent script, got nil")
+	}
+}
+
+
 
