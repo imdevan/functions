@@ -6,13 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 
-	"github.com/functions/internal/adapters/shell"
-	"github.com/functions/internal/domain"
-	"github.com/functions/internal/utils"
+	"github.com/funcs/internal/adapters/shell"
+	"github.com/funcs/internal/domain"
+	"github.com/funcs/internal/utils"
 )
 
 var (
@@ -71,8 +73,9 @@ func IsValidAlias(alias string) bool {
 	return true
 }
 
-// Manager handles alias CRUD operations.
+// Manager handles alias and function CRUD operations.
 type Manager struct {
+	functionsDir     string
 	filePath         string
 	shell            string
 	functionAlias    string
@@ -81,10 +84,20 @@ type Manager struct {
 	shellAdapter     *shell.Adapter
 }
 
-// NewManager creates a new alias manager.
+// NewManager creates a new alias/function manager.
 func NewManager(filePath string, shellType string, functionAlias string, interactiveAlias string, indexFolders []string) *Manager {
+	expPath := expandPath(filePath)
+	parent := filepath.Dir(expPath)
+	grandParent := filepath.Dir(parent)
+
+	functionsDir := grandParent
+	baseParent := filepath.Base(parent)
+	if baseParent != "scripts" && baseParent != "global" && baseParent != "lib" {
+		functionsDir = parent
+	}
 	return &Manager{
-		filePath:         expandPath(filePath),
+		functionsDir:     functionsDir,
+		filePath:         expPath,
 		shell:            shellType,
 		functionAlias:    functionAlias,
 		interactiveAlias: interactiveAlias,
@@ -93,24 +106,79 @@ func NewManager(filePath string, shellType string, functionAlias string, interac
 	}
 }
 
-// Load reads all aliases from the default alias file and any index folders.
+// NewManagerWithDir creates a manager with explicit functions directory and alias file.
+func NewManagerWithDir(functionsDir string, filePath string, shellType string, functionAlias string, interactiveAlias string, indexFolders []string) *Manager {
+	expDir := expandPath(functionsDir)
+	if expDir == "" {
+		home, _ := os.UserHomeDir()
+		expDir = filepath.Join(home, ".functions")
+	}
+	expPath := expandPath(filePath)
+	if expPath == "" {
+		expPath = filepath.Join(expDir, "scripts", domain.GetAliasFileName(shellType))
+	}
+	return &Manager{
+		functionsDir:     expDir,
+		filePath:         expPath,
+		shell:            shellType,
+		functionAlias:    functionAlias,
+		interactiveAlias: interactiveAlias,
+		indexFolders:     indexFolders,
+		shellAdapter:     shell.New(shellType),
+	}
+}
+
+// FunctionsDir returns the functions directory.
+func (m *Manager) FunctionsDir() string {
+	return m.functionsDir
+}
+
+// Load reads all aliases and functions from .functions directory and any index folders.
 func (m *Manager) Load() ([]domain.Alias, error) {
 	var allAliases []domain.Alias
+	seen := make(map[string]bool)
 
-	// 1. Load from default alias file
-	if _, err := os.Stat(m.filePath); err == nil {
-		data, err := os.ReadFile(m.filePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read default alias file: %w", err)
+	// 1. Load functions from ~/.functions/global, lib, scripts
+	globals := m.loadDirectoryFunctions(filepath.Join(m.functionsDir, "global"), domain.TypeGlobal)
+	for _, g := range globals {
+		if !seen[g.Name] {
+			allAliases = append(allAliases, g)
+			seen[g.Name] = true
 		}
-		aliases, err := m.parseShellScript(string(data))
-		if err != nil {
-			return nil, err
-		}
-		allAliases = append(allAliases, aliases...)
 	}
 
-	// 2. Load from index folders
+	libs := m.loadDirectoryFunctions(filepath.Join(m.functionsDir, "lib"), domain.TypeLib)
+	for _, l := range libs {
+		if !seen[l.Name] {
+			allAliases = append(allAliases, l)
+			seen[l.Name] = true
+		}
+	}
+
+	scripts := m.loadDirectoryFunctions(filepath.Join(m.functionsDir, "scripts"), domain.TypeScript)
+	for _, s := range scripts {
+		if !seen[s.Name] {
+			allAliases = append(allAliases, s)
+			seen[s.Name] = true
+		}
+	}
+
+	// 2. Load from default alias file
+	if _, err := os.Stat(m.filePath); err == nil {
+		data, err := os.ReadFile(m.filePath)
+		if err == nil {
+			aliases, _ := m.parseShellScript(string(data))
+			for _, al := range aliases {
+				if !seen[al.Name] {
+					al.Type = domain.TypeAlias
+					allAliases = append(allAliases, al)
+					seen[al.Name] = true
+				}
+			}
+		}
+	}
+
+	// 3. Load from index folders
 	for _, pattern := range m.indexFolders {
 		matches, err := filepath.Glob(expandPath(pattern))
 		if err != nil {
@@ -128,15 +196,82 @@ func (m *Manager) Load() ([]domain.Alias, error) {
 			if err != nil {
 				continue
 			}
-			fileManager := &Manager{filePath: match, shell: m.shell}
+			fileManager := &Manager{filePath: match, shell: m.shell, functionsDir: m.functionsDir}
 			aliases, err := fileManager.parseShellScript(string(data))
 			if err == nil {
-				allAliases = append(allAliases, aliases...)
+				for _, al := range aliases {
+					if !seen[al.Name] {
+						al.Type = domain.TypeAlias
+						allAliases = append(allAliases, al)
+						seen[al.Name] = true
+					}
+				}
 			}
 		}
 	}
 
 	return allAliases, nil
+}
+
+func (m *Manager) loadDirectoryFunctions(dirPath string, fnType domain.FunctionType) []domain.Alias {
+	var results []domain.Alias
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return results
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if fnType == domain.TypeScript && strings.HasPrefix(name, "aliases.") {
+			continue
+		}
+		filePath := filepath.Join(dirPath, name)
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			continue
+		}
+		item := m.parseFunctionFile(name, string(data), fnType, filePath)
+		results = append(results, item)
+	}
+	return results
+}
+
+func (m *Manager) parseFunctionFile(filename string, content string, fnType domain.FunctionType, filePath string) domain.Alias {
+	ext := filepath.Ext(filename)
+	funcName := strings.TrimSuffix(filename, ext)
+	description := ""
+	aliasName := ""
+
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "# Description:") {
+			description = strings.TrimSpace(strings.TrimPrefix(line, "# Description:"))
+		} else if strings.HasPrefix(line, "# Function:") {
+			fnVal := strings.TrimSpace(strings.TrimPrefix(line, "# Function:"))
+			if fnVal != "" {
+				funcName = fnVal
+			}
+		} else if strings.HasPrefix(line, "# Script:") {
+			scriptVal := strings.TrimSpace(strings.TrimPrefix(line, "# Script:"))
+			if scriptVal != "" {
+				funcName = scriptVal
+			}
+		} else if strings.HasPrefix(line, "# Alias:") {
+			aliasName = strings.TrimSpace(strings.TrimPrefix(line, "# Alias:"))
+		}
+	}
+
+	return domain.Alias{
+		Name:        funcName,
+		Value:       filePath,
+		Description: description,
+		SourceFile:  filePath,
+		Type:        fnType,
+		AliasName:   aliasName,
+	}
 }
 
 // parseShellScript extracts aliases from shell script.
@@ -155,6 +290,7 @@ func (m *Manager) parseShellScript(content string) ([]domain.Alias, error) {
 				Value:       val,
 				Description: desc,
 				SourceFile:  m.filePath,
+				Type:        domain.TypeAlias,
 			})
 		}
 	}
@@ -232,7 +368,7 @@ func (m *Manager) Save(aliases []domain.Alias) error {
 func (m *Manager) generateShellScript(aliases []domain.Alias) error {
 	var script strings.Builder
 
-	script.WriteString("# Generated by alias manager\n")
+	script.WriteString("# Generated by function manager\n")
 	script.WriteString("# Do not edit manually - changes will be overwritten\n\n")
 
 	if m.functionAlias != "" && m.functionAlias != "false" {
@@ -277,6 +413,15 @@ var functionWrapperTemplate string
 
 //go:embed templates/interactive_wrapper.tmpl
 var interactiveWrapperTemplate string
+
+//go:embed templates/global.tmpl
+var globalFunctionTemplate string
+
+//go:embed templates/lib.tmpl
+var libFunctionTemplate string
+
+//go:embed templates/scripts.tmpl
+var scriptsFunctionTemplate string
 
 func (m *Manager) generateFunctionWrapper(functionName string) string {
 	tmpl, err := template.New("function_wrapper").Parse(functionWrapperTemplate)
@@ -330,7 +475,7 @@ func (m *Manager) generateInteractiveWrapper(functionName string) string {
 	return builder.String()
 }
 
-// Add creates or updates an alias in its SourceFile.
+// Add creates or updates an alias or function in its appropriate location.
 func (m *Manager) Add(al domain.Alias) error {
 	if !IsValidAlias(al.Name) {
 		return ErrInvalidAlias
@@ -339,17 +484,105 @@ func (m *Manager) Add(al domain.Alias) error {
 		return ErrReservedAlias
 	}
 
-	existing, err := m.Get(al.Name)
-	targetFile := m.filePath
-	if err == nil && existing.SourceFile != "" {
-		targetFile = existing.SourceFile
-	}
-	al.SourceFile = targetFile
+	ext := shell.GetFileExtension(m.shell)
 
-	return m.writeAliasToFile(targetFile, al, false)
+	switch al.Type {
+	case domain.TypeGlobal:
+		targetDir := filepath.Join(m.functionsDir, "global")
+		if err := os.MkdirAll(targetDir, 0o755); err != nil {
+			return err
+		}
+		targetFile := filepath.Join(targetDir, al.Name+ext)
+		al.SourceFile = targetFile
+		content := m.renderTemplate(globalFunctionTemplate, al)
+		if err := os.WriteFile(targetFile, []byte(content), 0o755); err != nil {
+			return err
+		}
+		if al.AliasName != "" {
+			aliasItem := domain.Alias{
+				Name:        al.AliasName,
+				Value:       al.Name,
+				Description: fmt.Sprintf("Alias for global function %s", al.Name),
+				Type:        domain.TypeAlias,
+			}
+			_ = m.writeAliasToFile(m.filePath, aliasItem, false)
+		}
+		return nil
+
+	case domain.TypeLib:
+		targetDir := filepath.Join(m.functionsDir, "lib")
+		if err := os.MkdirAll(targetDir, 0o755); err != nil {
+			return err
+		}
+		targetFile := filepath.Join(targetDir, al.Name+ext)
+		al.SourceFile = targetFile
+		content := m.renderTemplate(libFunctionTemplate, al)
+		return os.WriteFile(targetFile, []byte(content), 0o755)
+
+	case domain.TypeScript:
+		targetDir := filepath.Join(m.functionsDir, "scripts")
+		if err := os.MkdirAll(targetDir, 0o755); err != nil {
+			return err
+		}
+		targetFile := filepath.Join(targetDir, al.Name+ext)
+		al.SourceFile = targetFile
+		content := m.renderTemplate(scriptsFunctionTemplate, al)
+		if err := os.WriteFile(targetFile, []byte(content), 0o755); err != nil {
+			return err
+		}
+
+		aliasName := al.AliasName
+		if aliasName == "" {
+			aliasName = utils.GenerateAlias(al.Name, "", true, 1)
+		}
+		if aliasName != "" {
+			aliasItem := domain.Alias{
+				Name:        aliasName,
+				Value:       targetFile,
+				Description: fmt.Sprintf("Script alias for %s", al.Name),
+				Type:        domain.TypeAlias,
+			}
+			_ = m.writeAliasToFile(m.filePath, aliasItem, false)
+		}
+		return nil
+
+	default: // domain.TypeAlias or unspecified
+		existing, err := m.Get(al.Name)
+		targetFile := m.filePath
+		if err == nil && existing.SourceFile != "" && (existing.Type == domain.TypeAlias || existing.Type == "") {
+			targetFile = existing.SourceFile
+		}
+		al.SourceFile = targetFile
+		return m.writeAliasToFile(targetFile, al, false)
+	}
 }
 
-// Get retrieves an alias by name.
+func (m *Manager) renderTemplate(tmplContent string, al domain.Alias) string {
+	tmpl, err := template.New("function").Parse(tmplContent)
+	if err != nil {
+		return ""
+	}
+	var b strings.Builder
+	upperName := strings.ToUpper(al.Name)
+	re := regexp.MustCompile(`[^A-Z0-9_]`)
+	upperName = re.ReplaceAllString(upperName, "_")
+
+	data := struct {
+		Name        string
+		UpperName   string
+		Description string
+		AliasName   string
+	}{
+		Name:        al.Name,
+		UpperName:   upperName,
+		Description: al.Description,
+		AliasName:   al.AliasName,
+	}
+	_ = tmpl.Execute(&b, data)
+	return b.String()
+}
+
+// Get retrieves an alias or function by name.
 func (m *Manager) Get(name string) (domain.Alias, error) {
 	aliases, err := m.Load()
 	if err != nil {
@@ -357,7 +590,7 @@ func (m *Manager) Get(name string) (domain.Alias, error) {
 	}
 
 	for _, a := range aliases {
-		if a.Name == name {
+		if a.Name == name || (a.AliasName != "" && a.AliasName == name) {
 			return a, nil
 		}
 	}
@@ -365,12 +598,21 @@ func (m *Manager) Get(name string) (domain.Alias, error) {
 	return domain.Alias{}, ErrAliasNotFound
 }
 
-// Delete removes an alias.
+// Delete removes an alias or function.
 func (m *Manager) Delete(name string) error {
 	existing, err := m.Get(name)
 	if err != nil {
 		return err
 	}
+
+	if existing.SourceFile != "" && (existing.Type == domain.TypeGlobal || existing.Type == domain.TypeLib || existing.Type == domain.TypeScript) {
+		_ = os.Remove(existing.SourceFile)
+		if existing.AliasName != "" {
+			_ = m.writeAliasToFile(m.filePath, domain.Alias{Name: existing.AliasName}, true)
+		}
+		return nil
+	}
+
 	targetFile := m.filePath
 	if existing.SourceFile != "" {
 		targetFile = existing.SourceFile
@@ -378,7 +620,41 @@ func (m *Manager) Delete(name string) error {
 	return m.writeAliasToFile(targetFile, existing, true)
 }
 
-// Exists checks if an alias exists.
+// RunScript executes a script by name with given arguments.
+func (m *Manager) RunScript(scriptName string, args []string) error {
+	aliases, err := m.Load()
+	if err == nil {
+		for _, a := range aliases {
+			if a.Type == domain.TypeScript && (a.Name == scriptName || a.AliasName == scriptName) {
+				cmd := exec.Command(a.SourceFile, args...)
+				cmd.Stdin = os.Stdin
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				return cmd.Run()
+			}
+		}
+	}
+
+	scriptsDir := filepath.Join(m.functionsDir, "scripts")
+	matches, _ := filepath.Glob(filepath.Join(scriptsDir, scriptName+"*"))
+	for _, match := range matches {
+		base := filepath.Base(match)
+		if strings.HasPrefix(base, "aliases.") {
+			continue
+		}
+		if base == scriptName || strings.TrimSuffix(base, filepath.Ext(base)) == scriptName {
+			cmd := exec.Command(match, args...)
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			return cmd.Run()
+		}
+	}
+
+	return fmt.Errorf("script '%s' not found", scriptName)
+}
+
+// Exists checks if an alias or function exists.
 func (m *Manager) Exists(name string) (bool, error) {
 	_, err := m.Get(name)
 	if err == ErrAliasNotFound {
@@ -393,7 +669,6 @@ func (m *Manager) Exists(name string) (bool, error) {
 func (m *Manager) writeAliasToFile(targetFile string, al domain.Alias, isDelete bool) error {
 	targetFile = expandPath(targetFile)
 
-	// Create directory if it doesn't exist
 	if err := os.MkdirAll(filepath.Dir(targetFile), 0o755); err != nil {
 		return err
 	}

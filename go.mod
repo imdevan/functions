@@ -1,4 +1,4 @@
-module github.com/functions
+module github.com/funcs
 
 go 1.26
 

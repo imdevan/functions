@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# Function: {{.Name}}
+# Description: {{.Description}}
+# Type: global
+
+if [[ -n "${_FLOAD_GLOBAL_{{.UpperName}}:-}" ]]; then
+  return
+fi
+typeset -g _FLOAD_GLOBAL_{{.UpperName}}=1
+
+function {{.Name}}() {
+    # Function implementation goes here
+    echo "Global function {{.Name}} called"
+}
+
+{{if .AliasName -}}
+alias {{.AliasName}}="{{.Name}}"
+{{end -}}

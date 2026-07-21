@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/functions/internal/domain"
+	"github.com/funcs/internal/domain"
 )
 
 // Theme holds configurable colors for UI output.

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	shelladapter "github.com/functions/internal/adapters/shell"
+	shelladapter "github.com/funcs/internal/adapters/shell"
 )
 
 // Config describes the resolved configuration.
@@ -29,7 +29,8 @@ type Config struct {
 	ConfirmDelete        bool   `toml:"confirm_delete"`
 	ListSpacing          string `toml:"list_spacing"`
 	
-	// Alias settings
+	// Alias and Function settings
+	FunctionsDir       string            `toml:"functions_dir"`
 	AliasFile          string            `toml:"alias_file"`
 	Shell              string            `toml:"shell"`
 	IndexFolders       []string          `toml:"index_folders"`
@@ -48,7 +49,8 @@ type Config struct {
 func DefaultConfig() Config {
 	home, _ := os.UserHomeDir()
 	detectedShell := shelladapter.DetectShell()
-	aliasFile := filepath.Join(home, ".aliases", GetAliasFileName(detectedShell))
+	functionsDir := filepath.Join(home, ".functions")
+	aliasFile := filepath.Join(functionsDir, "scripts", GetAliasFileName(detectedShell))
 	
 	return Config{
 		Editor:               "nvim",
@@ -69,6 +71,7 @@ func DefaultConfig() Config {
 		PlainText:            false,
 		ConfirmDelete:        true,
 		ListSpacing:          "space",
+		FunctionsDir:         functionsDir,
 		AliasFile:            aliasFile,
 		Shell:                detectedShell,
 		IndexFolders:         []string{},
@@ -96,6 +99,15 @@ func GetAliasFileName(shell string) string {
 	default: // bash, sh
 		return "aliases.sh"
 	}
+}
+
+// ResolvedFunctionsDir returns the expanded path to the functions directory.
+func (c Config) ResolvedFunctionsDir() string {
+	if c.FunctionsDir == "" {
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, ".functions")
+	}
+	return expandPath(c.FunctionsDir)
 }
 
 // ResolvedAliasFile returns the expanded path to the alias file.

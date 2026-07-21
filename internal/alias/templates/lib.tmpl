@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# Function: {{.Name}}
+# Description: {{.Description}}
+# Type: lib
+
+if [[ -n "${_FLOAD_LIB_{{.UpperName}}:-}" ]]; then
+  return
+fi
+typeset -g _FLOAD_LIB_{{.UpperName}}=1
+
+function {{.Name}}() {
+    # Library function implementation goes here
+    echo "Lib function {{.Name}} called"
+}

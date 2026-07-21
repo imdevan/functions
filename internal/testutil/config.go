@@ -3,7 +3,7 @@ package testutil
 import (
 	"testing"
 
-	"github.com/functions/internal/domain"
+	"github.com/funcs/internal/domain"
 )
 
 // ConfigOverrides lets tests override specific config fields.

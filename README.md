@@ -1,83 +1,51 @@
-# Aliases
+# functions (fm)
 
 A function manager for your favorite shell
 
 ## Features
 
-- An alias manager that works WITH your shell
-- Integrates with your favorite shell!
-
-## Install
-
-```bash
-# With homebrew
-homebrew install imdevan/aliases/aliases
-
-# With AUR
-yay -S aliases
-
-# Manual
-git clone https://github.com/imdevan/aliases.git
-cd aliases
-just build && sudo just install
-```
-
-See [install](https://devan.gg/aliases/install/) docs for more information.
-
-## Creating an alias
-
-```bash
-# Create an alias that cds to current directory
-~/Projects/favorite-project
-aliases fp
-
-# Add alias with name, value, description
-aliases add sayhello "echo hello" "say hello description"
-
-# Interactive list of aliases
-al
-```
-
-## How `aliases` works
-
-An **alias** in this case is an alias that is sourced into the shell on load time. 
-
-Aliases live in `~/.aliases/aliases.zsh` by default (or `.sh` / `.fish` / `.nu` depending on shell). The location can be changed via config options. 
-
-aliases is essentially a lightweight wrapper around that file. 
-
-## Using different shell? 
-
-aliases is set up for zsh first but works with any shell. Run `aliases config init` to create a custom config file.
-
-See configuration options for more info.
+- Manage shell functions (`global`, `lib`, `scripts`) and aliases seamlessly.
+- Automatic double-sourcing guard generation for all created functions.
+- Execute scripts on-demand with `fm run <script_name>`.
+- Search functions and scripts instantly with `fm search <query>`.
+- Interactive TUI browser powered by Bubble Tea.
 
 ## Commands
 
 ```bash
-aliases                 # Without args: opens TUI list. With name: creates a cd alias for cwd
-al                      # Interactive aliases list
-aliases add             # Interactive form to add a new alias, or aliases add [name] [value] [description]
-aliases delete          # Delete an alias
-aliases edit            # Edit an alias or open aliases file in editor
-aliases import          # Import aliases from a file or folder
-aliases config          # View or edit configuration
-aliases config init     # Generate default config file
-aliases completion      # Generate shell completion scripts
+fm                                  # Open interactive function browser (TUI)
+fm add [name] [type] [description]  # Add a new function (global, lib, scripts) or alias
+fm edit [name]                      # Edit a function or script directly in your editor
+fm delete <name>                    # Delete a function or script
+fm search [query]                   # Search functions and aliases by name/description
+fm run <script_name> [args...]      # Search for script name and execute it with arguments
+fm config                           # View or edit configuration file in your editor
+fm config init                      # Generate default configuration file
 ```
+
+## Architecture & Storage Layout
+
+Default storage directory: `~/.functions`
+
+```
+.functions
+├── global
+│   └── <global_function>.zsh    # Loaded into global shell on startup
+├── lib
+│   └── <lib_function>.sh        # Library functions sourced by other functions
+└── scripts
+    ├── aliases.zsh              # Script aliases loaded on startup
+    └── <script_function>.sh     # Executable scripts called on demand
+```
+
+## Function Types
+
+- **`global`**: Functions loaded into global shell context on shell load.
+- **`lib`**: Library functions imported by other functions via `source "$FUNCTIONS_ROOT/lib/<lib_name>.sh"`.
+- **`scripts`**: Standalone executable scripts triggered via `fm run <script_name>` or automatically created script aliases in `scripts/aliases.zsh`.
 
 ## Configuration
 
-aliases is designed to be highly customizable. 
+Configuration location: `~/.config/functions/config.toml`
 
-```bash
-aliases config # open config file location
-```
-
-Configuration file location: `~/.config/aliases/config.toml`  (`$XDG_CONFIG_HOME/aliases/config.toml`)
-
-See [configuration](./CONFIGURATION.md) for installation options.
-
-## Installation
-
-See [install](./INSTALL.md) for installation options.
+Run `fm config init` to create a default configuration file, or `fm config` to open it in your `$EDITOR`.

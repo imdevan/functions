@@ -5,10 +5,11 @@ editor = "nvim"
 interactive_default = false
 confirm_delete = true  # Prompt for confirmation before deleting an alias
 
-# Alias settings
-alias_file = "~/.aliases/aliases.zsh"  # File where aliases are stored (extension based on shell)
+# Function & Alias settings
+functions_dir = "~/.functions"         # Base folder for functions (global, lib, scripts)
+alias_file = "~/.functions/scripts/aliases.zsh"  # File where aliases are stored (extension based on shell)
 shell = "zsh"                          # Options: bash, zsh, fish, nu (auto-detected if not specified)
-index_folders = []                     # Glob patterns to scan for additional alias files (e.g. ["~/dotfiles/*.zsh"])
+index_folders = []                     # Glob patterns to scan for additional function files (e.g. ["~/dotfiles/*.zsh"])
 cache_interval = 300
 script_icons = {}
 

@@ -11,7 +11,7 @@ import (
 newCompletionCmd creates the completion command for generating shell completion scripts.
 
 The completion command generates shell completion scripts for various shells.
-This enables tab-completion for functions commands and functions.
+This enables tab-completion for funcs commands and funcs.
 
 Supported shells:
   - bash
@@ -22,16 +22,16 @@ Supported shells:
 Examples:
 
 	# Generate bash completion
-	functions completion bash > /etc/bash_completion.d/functions
+	funcs completion bash > /etc/bash_completion.d/funcs
 
 	# Generate zsh completion
-	functions completion zsh > ~/.zsh/completion/_functions
+	funcs completion zsh > ~/.zsh/completion/_funcs
 
 	# Generate fish completion
-	functions completion fish > ~/.config/fish/completions/functions.fish
+	funcs completion fish > ~/.config/fish/completions/funcs.fish
 
 	# Generate powershell completion
-	functions completion powershell > functions.ps1
+	funcs completion powershell > funcs.ps1
 */
 func newCompletionCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -68,9 +68,9 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 func completionHelp() string {
 	return strings.Join([]string{
 		"Examples:",
-		"  functions completion bash > /etc/bash_completion.d/functions",
-		"  functions completion zsh > ~/.zsh/completion/_functions",
-		"  functions completion fish > ~/.config/fish/completions/functions.fish",
-		"  functions completion powershell > functions.ps1",
+		"  funcs completion bash > /etc/bash_completion.d/funcs",
+		"  funcs completion zsh > ~/.zsh/completion/_funcs",
+		"  funcs completion fish > ~/.config/fish/completions/funcs.fish",
+		"  funcs completion powershell > funcs.ps1",
 	}, "\n")
 }

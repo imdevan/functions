@@ -6,10 +6,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/functions/internal/adapters/editor"
-	"github.com/functions/internal/config"
-	"github.com/functions/internal/domain"
-	"github.com/functions/internal/utils"
+	"github.com/funcs/internal/adapters/editor"
+	"github.com/funcs/internal/config"
+	"github.com/funcs/internal/domain"
+	"github.com/funcs/internal/utils"
 )
 
 // @docs-command:

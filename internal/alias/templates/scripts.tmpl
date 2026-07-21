@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# Script: {{.Name}}
+# Description: {{.Description}}
+# Type: scripts
+
+if [[ -n "${_FLOAD_SCRIPTS_{{.UpperName}}:-}" ]]; then
+  return
+fi
+typeset -g _FLOAD_SCRIPTS_{{.UpperName}}=1
+
+{{.Name}}() {
+    # Script implementation goes here
+    echo "Script {{.Name}} called"
+}
+
+{{.Name}} "$@"

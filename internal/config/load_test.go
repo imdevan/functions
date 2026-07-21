@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/functions/internal/utils"
+	"github.com/funcs/internal/utils"
 )
 
 func TestLoad_returnsDefaultWhenNoConfig(t *testing.T) {

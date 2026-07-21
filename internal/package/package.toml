@@ -1,9 +1,9 @@
 # Package information - source of truth for project metadata
 # Run just sync after modifying this file
 
-name = "functions"
-package_name = "functions"
-module = "github.com/functions"
+name = "funcs"
+package_name = "funcs"
+module = "github.com/funcs"
 description = "A function manager for your favorite shell"
 short = "function manager"
 version = "1.2.0"

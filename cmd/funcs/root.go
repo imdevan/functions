@@ -12,15 +12,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
-	"github.com/functions/internal/adapters/editor"
-	"github.com/functions/internal/adapters/icon"
-	"github.com/functions/internal/adapters/tty"
-	"github.com/functions/internal/alias"
-	"github.com/functions/internal/config"
-	"github.com/functions/internal/domain"
-	"github.com/functions/internal/flags"
-	pkg "github.com/functions/internal/package"
-	"github.com/functions/internal/ui"
+	"github.com/funcs/internal/adapters/editor"
+	"github.com/funcs/internal/adapters/icon"
+	"github.com/funcs/internal/adapters/tty"
+	"github.com/funcs/internal/alias"
+	"github.com/funcs/internal/config"
+	"github.com/funcs/internal/domain"
+	"github.com/funcs/internal/flags"
+	pkg "github.com/funcs/internal/package"
+	"github.com/funcs/internal/ui"
 )
 
 // Metadata loaded from package.toml at build time
@@ -48,9 +48,10 @@ func Execute() error {
 func newRootCmd() *cobra.Command {
 	opts := &rootOptions{}
 	cmd := &cobra.Command{
-		Use:   name + " [name]",
-		Short: short,
-		Args:  cobra.MaximumNArgs(1),
+		Use:     name + " [name]",
+		Aliases: []string{"fm"},
+		Short:   short,
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.showVersion {
 				ver := resolvedVersion()
@@ -84,8 +85,8 @@ func newRootCmd() *cobra.Command {
 
 	flags.SetPersistent(cmd, &opts.configPath, "config", "c", "config file path")
 
-	flags.Set(cmd, &opts.interactive, "interactive", "i", "interactive alias browser")
-	flags.Set(cmd, &opts.add, "add", "a", "interactive add alias form")
+	flags.Set(cmd, &opts.interactive, "interactive", "i", "interactive alias/function browser")
+	flags.Set(cmd, &opts.add, "add", "a", "interactive add form")
 	flags.Set(cmd, &opts.yes, "yes", "y", "skip confirmation, and interactive prompts")
 
 	flags.Set(cmd, &opts.showVersion, "version", "v", "print version information")
@@ -93,6 +94,8 @@ func newRootCmd() *cobra.Command {
 	cmd.AddCommand(newAddCmd())
 	cmd.AddCommand(newDeleteCmd())
 	cmd.AddCommand(newEditCmd())
+	cmd.AddCommand(newSearchCmd())
+	cmd.AddCommand(newRunCmd())
 	cmd.AddCommand(newListCmd())
 	cmd.AddCommand(newImportCmd())
 	cmd.AddCommand(newConfigCmd())
@@ -355,7 +358,12 @@ type aliasItem struct {
 }
 
 func (a aliasItem) Title() string {
-	title := a.Alias.Name
+	fnType := string(a.Alias.Type)
+	if fnType == "" {
+		fnType = "alias"
+	}
+	tagStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(a.Config.Tags)).Bold(true)
+	title := tagStyle.Render("["+fnType+"]") + " " + a.Alias.Name
 	if a.Alias.Description != "" {
 		mutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(a.Config.Muted))
 		title += " " + mutedStyle.Render("• "+a.Alias.Description)
@@ -364,11 +372,14 @@ func (a aliasItem) Title() string {
 }
 
 func (a aliasItem) Description() string {
-	return a.Alias.Value
+	if a.Alias.Value != "" {
+		return a.Alias.Value
+	}
+	return a.Alias.SourceFile
 }
 
 func (a aliasItem) FilterValue() string {
-	return a.Alias.Name + " " + a.Alias.Value + " " + a.Alias.Description
+	return string(a.Alias.Type) + " " + a.Alias.Name + " " + a.Alias.Value + " " + a.Alias.Description
 }
 
 type aliasListModel struct {
