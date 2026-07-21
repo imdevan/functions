@@ -1,14 +1,14 @@
 # Package information - source of truth for project metadata
 # Run just sync after modifying this file
 
-name = "aliases"
-package_name = "aliases"
-module = "github.com/aliases"
-description = "An alias manager for your favorite shell"
-short = "alias manager"
-version = "1.0.0"
-homepage = "https://devan.gg/aliases"
-repository = "https://github.com/imdevan/aliases/"
+name = "functions"
+package_name = "functions"
+module = "github.com/functions"
+description = "A function manager for your favorite shell"
+short = "function manager"
+version = "1.2.0"
+homepage = "https://devan.gg/functions"
+repository = "https://github.com/imdevan/functions/"
 author = "hi@devan.gg"
 docs_site = "https://devan.gg"
-docs_base = "/aliases"
+docs_base = "/functions"
