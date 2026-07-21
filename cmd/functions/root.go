@@ -12,15 +12,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
-	"github.com/aliases/internal/adapters/editor"
-	"github.com/aliases/internal/adapters/icon"
-	"github.com/aliases/internal/adapters/tty"
-	"github.com/aliases/internal/alias"
-	"github.com/aliases/internal/config"
-	"github.com/aliases/internal/domain"
-	"github.com/aliases/internal/flags"
-	pkg "github.com/aliases/internal/package"
-	"github.com/aliases/internal/ui"
+	"github.com/functions/internal/adapters/editor"
+	"github.com/functions/internal/adapters/icon"
+	"github.com/functions/internal/adapters/tty"
+	"github.com/functions/internal/alias"
+	"github.com/functions/internal/config"
+	"github.com/functions/internal/domain"
+	"github.com/functions/internal/flags"
+	pkg "github.com/functions/internal/package"
+	"github.com/functions/internal/ui"
 )
 
 // Metadata loaded from package.toml at build time

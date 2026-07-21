@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	shelladapter "github.com/aliases/internal/adapters/shell"
+	shelladapter "github.com/functions/internal/adapters/shell"
 )
 
 // Config describes the resolved configuration.

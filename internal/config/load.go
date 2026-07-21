@@ -1,6 +1,6 @@
 package config
 
-import "github.com/aliases/internal/domain"
+import "github.com/functions/internal/domain"
 
 // Load returns the config for cwd. Uses overridePath when non-empty; falls back
 // to DefaultConfig on error.

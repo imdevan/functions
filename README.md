@@ -1,6 +1,6 @@
 # Aliases
 
-An alias manager for your favorite shell
+A function manager for your favorite shell
 
 ## Features
 

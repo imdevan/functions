@@ -1,4 +1,4 @@
-module github.com/aliases
+module github.com/functions
 
 go 1.26
 

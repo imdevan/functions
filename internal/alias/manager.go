@@ -10,9 +10,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/aliases/internal/adapters/shell"
-	"github.com/aliases/internal/domain"
-	"github.com/aliases/internal/utils"
+	"github.com/functions/internal/adapters/shell"
+	"github.com/functions/internal/domain"
+	"github.com/functions/internal/utils"
 )
 
 var (

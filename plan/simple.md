@@ -1,235 +1,98 @@
 # Goal
  
-create `a` an alias manager for "your favorite shell"
+`functions` a function manager for your favorite shell
+
+recreate /home/devy/dotfiles/functions/new_function.sh:3
+
+as a go cli
 
 # Context
 
-bookmark already exsists
-see ../b for current
+alias already exsists
+see ../aliases for current
 
 # Commands
 
-am
-am add
-am edit
-am delete
-am search
-am config
-am config init
-
-## search
-Search for an alias. 
-
-By default search all aliases in `~/.aliases` and `index_folders`.
-
-By default search should print the aliases list response
-### flags
-- `-o,--only-am` only serach in `~/.aliases` 
-- -i, --interactive: open search in interactive mode?
-  - could be limitations if not able to run full command in interactive
+fm
+fm add
+fm edit
+fm delete
+fm search
+fm run script_name search for script name, then execute it
+fm config
+fm config init
 
 # Architecture
 
 
-Default config location ~/.config/alias-manager/config.toml already implemented.
+## config
 
-New config opions: `index_folders`: a list of glob patterns for the user to defined directories in addition 
-  to the default alias location which the user would like to index. e.g. ~/.bookmarks, or ~/dotfiles which 
-  would would allow for alias in those folders to be found when the user uses the `alias search` command
+Default config location ~/.config/functions/config.toml already implemented.
 
-Sqlite db for indexing aliases. To enable fast searching via `alias search`
+New config opions: index_folders: a list of glob patterns for the user to defined directories in addition 
+  to the default fm location which the user would like to index. e.g. ~/.bookmarks, or ~/dotfiles which 
+  would would allow for fm in those folders to be found when the user uses the `alias search` command
 
-db should be regularly updated so that if a users changes a file in an indexed folder it it will update the db, but not so much that it the user takes a peformance hit. if  it is a huge thing, possibly just update asynchronously on shell load but cache or debounce at some `cache_interval` so that it is not being called every load. I really want this app to be performant. 
 
-Default alias storage location ~/.alias-manager/aliases.zsh (or appropriate shell). The place where aliases are added via `alias add` 
+## storage
 
-am likely needs some kind of wrapper function to re-source the alias file after add/edit/delete
+Default fm storage location ~/.functions/ (or appropriate shell). The place where aliases are added via `functions add` 
 
-# Config options
+### .functions folder layout
 
-`script_icons` - show devicons for context of alias value 
+```bash
+.functions
+├── global
+│   └── global_name.zsh
+├── lib
+│   └── lib_name.sh
+└── scripts
+    ├── aliases.zsh
+    └── script_name.sh
 
 ```
-dliv  - "list containers open in nvim"                               
-   docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}' | nvim
-                                                                     
-nds  - "run npm build and docker start"                              
-   npm run build && docker compuse up -d   # include multiple icons?
-
-```
-
-`custom_icons` - custom icons to show in list view for given tokens (v2)
-
-
 # Open Questions
 
-## Figure out naming
 
-a | am | alias-manager | alias ?
+## Types of functions
 
-## edit and delete all indexed aliases?
+each function is generated based on an embeded tmpl file 
 
-Even those not in ~/.aliases/aliases.sh?
+all files should be protected form loading multiple times via 
 
-# View options
-## Bookmark default
-advantage: least to change, easiest to start impelmentation
+```bash
+if [[ -n "${_FLOAD_LIB_SCRIPT_NAME:-}" ]]; then
+  return
+fi
+typeset -g _FLOAD_LIB_SCRIPT_NAME=1
+```
+middle word matches function type 
 
- ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
- │    Aliases (524)                                                                            │
- │                                                                                              │
- │ │ a  - "this is a possible description"                                                      │
- │ │  alias                                                                                    │
- │                                                                                              │
- │   ld - "this is a possible description"                                                      │
- │    lazydocker                                                                               │
- │                                                                                              │
- │   dl - "this is a possible description"                                                      │
- │     docker logs                                                                             │
- │                                                                                              │
- │   dli  - "list containers"                                                                   │
- │     docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}'                              │
- │                                                                                              │
- │   dliv  - "list containers open in nvim"                                                     │
- │     docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}' | nvim                       │
- │                                                                                              │
- │   nds  - "run npm build and docker start"                                                    │
- │      npm run build && docker compuse up -d   # include multiple icons?                     │
- │                                                                                              │
- │                                                                                              │
- │   ••••••••••                                                                                 │
- │                                                                                              │
- │   ↑/k up • ↓/j down • / filter • enter copy cd command • a add bookmark • q quit • ? more    │
- │                                                                                              │
- ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+### lib
+functions used in other functions
+- should be imported into those functions via 
+`source "$FUNCTIONS_ROOT/lib/script_name.zsh"`
+- not loaded into global shell 
 
- 
-## Tight optional desc. on bottom
- ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
- │                                                                                              │
- │    Aliases (432)                                                                            │
- │                                                                                              │
- │ │ a       alias                                                                             │
- │ │ "this is a possible description"                                                           │
- │   ld     $  lazydocker  "possible description"                                               │
- │   dl       docker logs                                                                      │
- │   dli      docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}'                      │
- │   "Docker - list containers"                                                                 │
- │   dliv     docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}' | nvim               │
- │   "Docker - list containers - open in vim"                                                   │
- │                                                                                              │
- │                                                                                              │
- │   ••••••••••                                                                                 │
- │                                                                                              │
- │   ↑/k up • ↓/j down • / filter • enter copy cd command • a add bookmark • q quit • ? more    │
- │                                                                                              │
- ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+### global
+Load into global config on shell load
 
-## Grouped
+### scripts
+Only needed occasionally, okay with calling file first
 
- ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
- │                                                                                              │
- │    Aliases (65)                                                                             │
- │                                                                                              │
- │ │ a       alias                                                                             │
- │ │ "this is a possible description"                                                           │
- │   ld     $  lazydocker  "possible description"                                               │
- │                                                                                              │
- │     Docker                                                                                  │
- │   ────────────────────────────────────────────────────────────────────────────────────────   │
- │   dl       docker logs                                                                      │
- │   dli      docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}'                      │
- │   dliv     docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}' | nvim               │
- │                                                                                              │
- │     NPM                                                                                     │
- │   ────────────────────────────────────────────────────────────────────────────────────────   │
- │                                                                                              │
- │   ••••••••••                                                                                 │
- │                                                                                              │
- │   ↑/k up • ↓/j down • / filter • enter copy cd command • a add bookmark • q quit • ? more    │
- │                                                                                              │
- ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+could be run by ~/.functions/scripts/script_name.sh ...
+functions run script_name
 
-## Space
-
- ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
- │                                                                                              │
- │    Aliases (65)                                                                             │
- │                                                                                              │
- │ │ a       alias                                                                             │
- │ │ "this is a possible description"                                                           │
- │                                                                                              │
- │   ld     $  lazydocker  "possible description"                                               │
- │   "this is a possible description"                                                           │
- │                                                                                              │
- │   dl       docker logs                                                                      │
- │                                                                                              │
- │   dli      docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}'                      │
- │   "this is a possible description"                                                           │
- │                                                                                              │
- │   dliv     docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}' | nvim               │
- │   "this is a possible description"                                                           │
- │                                                                                              │
- │                                                                                              │
- │   ••••••••••                                                                                 │
- │                                                                                              │
- │   ↑/k up • ↓/j down • / filter • enter copy cd command • a add bookmark • q quit • ? more    │
- │                                                                                              │
- ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
-
-## Table view
-
- ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
- │                                                                                              │
- │    Aliases (1,234)                                                                          │
- │                                                                                              │
- │   a      │ do the thing              │ this is a possible description                       │
- │   ld     │ lazydocker                │ this is a possible description                       │
- │   dl     │ docker logs               │ this is a possible description                       │
- │   dli    │ docker ps --fo..          │ this is a possible description                       │
- │   dliv   │ docker ps --fo..          │ this is a possible description                       │
- │                                                                                              │
- │   ••••••••••                                                                                 │
- │                                                                                              │
- │   ↑/k up • ↓/j down • / filter • enter copy cd command • a add bookmark • q quit • ? more    │
- │                                                                                              │
- ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+functions edit script_name to_function ? 
 
 
-## Full width table view
- Aliases (1,234)                                                                      
-                                                                                       
-a      │ do the thing                                                           │ this is a possible description  
-ld     │ lazydocker                                                             │ this is a possible description  
-dl     │ docker logs                                                            │ this is a possible description  
-dli    │ docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}'             │ this is a possible description  
-dliv   │ docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}' | nvim      │ this is a possible description  
-                                                                                       
-••••••••••                                                                             
-                                                                                       
-↑/k up • ↓/j down • / filter • enter copy cd command • a add bookmark • q quit • ? more
+## scripts/aliases
+
+scripts are asynchronous functions that are not loaded at shell load time. 
+
+however .functions/scripts/aliases is which allows for scripts to be quickly triggered from the global context without having to source them on shell load. 
 
 
-## Full width fat highlight
-  Aliases (1,234)                                                                      
-                                                                                       
- a      │ do the thing                                                           │ this is a possible description  
-│ld     │ lazydocker                                                             
-│this is a possible description  
- dl     │ docker logs                                                             │ this is a possible description  
- dli    │ docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}'             │ this is a possible description  
- dliv   │ docker ps --format 'table {{.ID}}	{{.Names}}	{{.Status}}' | nvim      │ this is a possible description  
-                                                                                       
- ••••••••••                                                                             
-                                                                                        
- ↑/k up • ↓/j down • / filter • enter copy cd command • a add bookmark • q quit • ? more
-
-# Icon library
-
-
-
-
-
 
 
- │                                                                                              │
+

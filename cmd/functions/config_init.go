@@ -10,11 +10,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/aliases/internal/adapters/editor"
-	"github.com/aliases/internal/config"
-	"github.com/aliases/internal/domain"
-	"github.com/aliases/internal/flags"
-	"github.com/aliases/internal/utils"
+	"github.com/functions/internal/adapters/editor"
+	"github.com/functions/internal/config"
+	"github.com/functions/internal/domain"
+	"github.com/functions/internal/flags"
+	"github.com/functions/internal/utils"
 )
 
 type configInitOptions struct {

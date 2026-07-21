@@ -1,6 +1,6 @@
 package config
 
-import "github.com/aliases/internal/domain"
+import "github.com/functions/internal/domain"
 
 // Manager describes configuration persistence behavior.
 type Manager interface {
