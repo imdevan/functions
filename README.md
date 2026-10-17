@@ -16,6 +16,7 @@ A function manager for your favorite shell
 fm                                  # Open interactive function browser (TUI)
 fm add [name] [type] [description]  # Add a new function (global, lib, scripts) or alias
 fm edit [name]                      # Edit a function or script directly in your editor
+fm open [name]                      # Open a function, script, or alias file in your editor
 fm delete <name>                    # Delete a function or script
 fm search [query]                   # Search functions and aliases by name/description
 fm run <script_name> [args...]      # Search for script name and execute it with arguments
